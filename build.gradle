@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+repositories { mavenCentral() }
+
+java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
+application { mainClass = 'app.safile.FileServer' }
+
+dependencies {
+    implementation 'org.apache.tika:tika-core:3.3.2'
+    implementation 'org.apache.tika:tika-parsers-standard-package:3.3.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.6'
+    implementation 'org.eclipse.angus:jakarta.mail:2.0.5'
+    runtimeOnly 'org.slf4j:slf4j-simple:2.0.17'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    systemProperty 'java.awt.headless', 'true'
+    systemProperty 'sa.file.classpath', sourceSets.main.runtimeClasspath.asPath
+}
