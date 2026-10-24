@@ -5,6 +5,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
@@ -17,6 +19,38 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FileServerTest {
+    @Test
+    void composeUploadLimitAllowsServiceToStart() throws Exception {
+        FileServer server = new FileServer("127.0.0.1", 0, "test-token", 268435456, 1000000, 25, 2);
+        server.start();
+        try {
+            var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.port() + "/health")).GET().build();
+            var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode());
+            assertEquals("UP", new ObjectMapper().readValue(response.body(), Map.class).get("status"));
+        } finally { server.stop(); }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, 1000000, 25, 2, SA_FILE_MAX_BYTES, 268435456",
+        "268435457, 1000000, 25, 2, SA_FILE_MAX_BYTES, 268435456",
+        "20971520, 0, 25, 2, SA_FILE_MAX_CHARS, 5000000",
+        "20971520, 5000001, 25, 2, SA_FILE_MAX_CHARS, 5000000",
+        "20971520, 1000000, 0, 2, SA_FILE_TIMEOUT_SECONDS, 120",
+        "20971520, 1000000, 121, 2, SA_FILE_TIMEOUT_SECONDS, 120",
+        "20971520, 1000000, 25, 0, SA_FILE_CONCURRENCY, 8",
+        "20971520, 1000000, 25, 9, SA_FILE_CONCURRENCY, 8"
+    })
+    void invalidLimitsNameTheEnvironmentVariable(int maxBytes, int maxChars, int timeoutSeconds,
+                                                int concurrency, String variable, int maximum) {
+        var error = assertThrows(IllegalArgumentException.class, () -> {
+            FileServer server = new FileServer("127.0.0.1", 0, "", maxBytes, maxChars, timeoutSeconds, concurrency);
+            server.stop();
+        });
+        assertTrue(error.getMessage().startsWith(variable + " must be between 1 and " + maximum));
+    }
+
     static byte[] document(String format) throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         switch (format) {

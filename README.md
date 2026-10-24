@@ -41,11 +41,11 @@ Environment Variables:
 | --- | --- |
 | SA_FILE_HOST / SA_FILE_PORT | 127.0.0.1 / 4190 |
 | SA_FILE_TOKEN | Empty; must be configured for non-loopback listening |
-| SA_FILE_MAX_BYTES | 20971520 |
+| SA_FILE_MAX_BYTES | 20971520; supported range: 1–268435456 bytes (256 MiB) |
 | SA_FILE_MAX_CHARS | 1000000 |
 | SA_FILE_TIMEOUT_SECONDS | 25 |
 | SA_FILE_CONCURRENCY | 2 |
-| SA_FILE_OCR_LANG | eng；use eng+chi_sim for Chinese and ensure language data is installed, see more at https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage.html#simplest-invocation-to-ocr-an-image  |
+| SA_FILE_OCR_LANG | eng; use eng+chi_sim for Chinese and ensure language data is installed, see more at https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage.html#simplest-invocation-to-ocr-an-image  |
 
 Original files and output are saved in a request-scoped temporary directory and cleaned up upon completion; no audit or persistent files are kept. Each document processing task spawns an isolated JVM with 256 MiB heap memory; timeouts will terminate the child process along with any descendant OCR processes. If output exceeds the limit, LIMIT_EXCEEDED is returned rather than partial success. Unreadable encrypted files return ENCRYPTED. If no text is extracted from images or scanned PDFs, a failure is returned—they are not quietly treated as safe, empty documents.
 
@@ -54,16 +54,18 @@ Original files and output are saved in a request-scoped temporary directory and 
 or local execution, Tesseract (along with required language packs) must be installed beforehand and added to the PATH. Standard text in Office documents does not depend on OCR. PDFs use an automatic OCR strategy; image quality and OCR accuracy will affect recognition results, and complete accuracy for scanned text cannot be guaranteed.
 
 ```sh
-# Build the base image containing JRE, Tesseract, and any other language packs (typically only needs to be run once)
-docker build -t sa2web-file-parser:base -f docker/Dockerfile .
-# The main Dockerfile depends on the above image and copies the build output from installDist
+# Build the distribution before building the image
+gradle test installDist
+# The builder stage installs JRE and OCR dependencies; Docker caches this layer
 docker build -t sa2web-file-parser:latest .
 docker run --rm --name sa-file-test --read-only --tmpfs /tmp:size=256m \
   --memory=1g --cpus=2 --pids-limit=128 \
-  -p 4190:4190 -e SA_FILE_TOKEN=your-test-token sa2web-file-parser:latest
+  -p 4190:3906 -e SA_FILE_TOKEN=your-test-token sa2web-file-parser:latest
 ```
 
-Complete `gradle test installDist` prior to building the application image; otherwise, there will be no distribution directory to copy. `docker/Dockerfile` installs English and Simplified Chinese language packs, and the root `Dockerfile` runs the service as a non-root user. If only Java code is modified, simply rebuild the distribution directory and application image.
+Complete `gradle test installDist` prior to building the application image; otherwise, there will be no distribution directory to copy. The root `Dockerfile` contains both stages: `builder` installs Tesseract with English and Simplified Chinese language packs, and `runtime` inherits those dependencies, copies the application distribution, and runs as a non-root user. No separate `sa2web-file-parser:base` image is required. If only Java code is modified, rebuild the distribution and application image; Docker reuses the dependency layer as long as its cache is available and the base image and installation command are unchanged. A fresh builder, deleted cache, or `--no-cache` requires downloading dependencies again.
+
+Alternatively, run `sh docker/build.sh` from the project root. The script uses the same root Dockerfile and accepts extra Docker build flags.
 
 
 ## Integration Testing with sa2web

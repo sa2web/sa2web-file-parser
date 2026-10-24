@@ -15,6 +15,7 @@ import java.util.concurrent.*;
 
 public final class FileServer {
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final int MAX_FILE_BYTES = 256 * 1024 * 1024;
     private final int maxBytes;
     private final int maxChars;
     private final int timeoutSeconds;
@@ -23,15 +24,15 @@ public final class FileServer {
     private final HttpServer server;
 
     public FileServer(String host, int port, String token, int maxBytes, int maxChars, int timeoutSeconds, int concurrency) throws Exception {
+        requireRange("SA_FILE_MAX_BYTES", maxBytes, 1, MAX_FILE_BYTES);
+        requireRange("SA_FILE_MAX_CHARS", maxChars, 1, 5000000);
+        requireRange("SA_FILE_TIMEOUT_SECONDS", timeoutSeconds, 1, 120);
+        requireRange("SA_FILE_CONCURRENCY", concurrency, 1, 8);
         this.token = token;
         this.maxBytes = maxBytes;
         this.maxChars = maxChars;
         this.timeoutSeconds = timeoutSeconds;
         this.slots = new Semaphore(concurrency);
-        if (maxBytes < 1 || maxBytes > 104857600 || maxChars < 1 || maxChars > 5000000 ||
-                timeoutSeconds < 1 || timeoutSeconds > 120 || concurrency < 1 || concurrency > 8) {
-            throw new IllegalArgumentException("Invalid file service limits");
-        }
         if (!Set.of("127.0.0.1", "localhost", "::1").contains(host) && token.isBlank()) {
             throw new IllegalArgumentException("SA_FILE_TOKEN is required for non-loopback binding");
         }
@@ -39,6 +40,12 @@ public final class FileServer {
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         server.createContext("/health", x -> send(x, 200, Map.of("status", "UP")));
         server.createContext("/parse", this::handle);
+    }
+
+    private static void requireRange(String name, int value, int min, int max) {
+        if (value < min || value > max) {
+            throw new IllegalArgumentException(name + " must be between " + min + " and " + max + " (received " + value + ")");
+        }
     }
 
     public void start() { server.start(); }

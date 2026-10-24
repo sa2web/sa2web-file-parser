@@ -45,9 +45,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build base image locally
-        run: docker build -f docker/Dockerfile -t sa2web-file-parser:base .
-
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -66,8 +63,10 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          target: runtime
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
+          # Cache intermediate stages too, including the builder's OCR dependencies.
           cache-to: type=gha,mode=max

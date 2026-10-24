@@ -6,7 +6,10 @@ plugins {
 repositories { mavenCentral() }
 
 java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
-application { mainClass = 'app.safile.FileServer' }
+application {
+    mainClass = 'app.safile.FileServer'
+    applicationName = 'sa_file'
+}
 
 dependencies {
     implementation 'org.apache.tika:tika-core:3.3.2'
