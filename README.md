@@ -54,18 +54,27 @@ Original files and output are saved in a request-scoped temporary directory and 
 or local execution, Tesseract (along with required language packs) must be installed beforehand and added to the PATH. Standard text in Office documents does not depend on OCR. PDFs use an automatic OCR strategy; image quality and OCR accuracy will affect recognition results, and complete accuracy for scanned text cannot be guaranteed.
 
 ```sh
-# Build the distribution before building the image
-gradle test installDist
-# The builder stage installs JRE and OCR dependencies; Docker caches this layer
+# Docker compiles and tests the application; no host JDK or Gradle is required
 docker build -t sa2web-file-parser:latest .
 docker run --rm --name sa-file-test --read-only --tmpfs /tmp:size=256m \
   --memory=1g --cpus=2 --pids-limit=128 \
   -p 4190:3906 -e SA_FILE_TOKEN=your-test-token sa2web-file-parser:latest
 ```
 
-Complete `gradle test installDist` prior to building the application image; otherwise, there will be no distribution directory to copy. The root `Dockerfile` contains both stages: `builder` installs Tesseract with English and Simplified Chinese language packs, and `runtime` inherits those dependencies, copies the application distribution, and runs as a non-root user. No separate `sa2web-file-parser:base` image is required. If only Java code is modified, rebuild the distribution and application image; Docker reuses the dependency layer as long as its cache is available and the base image and installation command are unchanged. A fresh builder, deleted cache, or `--no-cache` requires downloading dependencies again.
+The root `Dockerfile` supports Linux amd64 and arm64. The `application` stage
+uses Gradle and JDK 21 on the build machine to produce portable Java bytecode;
+`builder` installs a target-platform JRE and Tesseract with English and Simplified
+Chinese language packs. `runtime` inherits those dependencies, copies the tested
+application, and runs as a non-root user. No separate base image or local
+`installDist` output is required. Docker caches OCR dependencies independently of
+application source, and a BuildKit cache mount preserves Gradle downloads on the
+same builder. A fresh builder, deleted cache, or changed dependencies can require
+downloads again.
 
-Alternatively, run `sh docker/build.sh` from the project root. The script uses the same root Dockerfile and accepts extra Docker build flags.
+For a multi-platform registry image, use
+`docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/sa2web-file-parser:latest --push .`.
+Cross-building requires emulation for target-platform package installation;
+native builds automatically use the host architecture.
 
 
 ## Integration Testing with sa2web
@@ -88,3 +97,19 @@ curl -H 'Authorization: Bearer your-test-token' \
   -F 'file=@build/fixtures/sensitive.docx' \
   -F 'filename=sensitive.docx' http://127.0.0.1:4190/parse
 ```
+
+## License and third-party software
+
+The original project code is licensed under [Apache License 2.0](LICENSE).
+Third-party libraries and container components retain their own licenses.
+
+The container includes GPL/LGPL components, including the OpenJDK runtime
+(GPL-2.0 with the Classpath Exception), GNU system tools, and native libraries.
+Some Java dependencies offer GPL/LGPL alternatives alongside other license options;
+this does not mean GPL is their only available license. Tesseract itself is
+Apache-2.0.
+
+See [Third-party licenses](THIRD_PARTY_LICENSES.md) for the reviewed components,
+license options, scope and redistribution requirements. Publishing this project's
+source and distributing a complete binary/container image have different obligations;
+this notice alone does not fulfill all third-party source distribution requirements.
