@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM builder AS runtime
 
 COPY --from=application /build/build/install/sa_file /opt/sa_file
-ENV SA_FILE_HOST=0.0.0.0 SA_FILE_PORT=3906 SA_FILE_OCR_LANG=eng+chi_sim
+ENV SA_FILE_HOST=0.0.0.0 SA_FILE_PORT=6063 SA_FILE_OCR_LANG=eng+chi_sim
 USER 10001:10001
-EXPOSE 3906
+EXPOSE 6063
 ENTRYPOINT ["/opt/sa_file/bin/sa_file"]

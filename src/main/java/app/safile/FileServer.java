@@ -133,7 +133,7 @@ public final class FileServer {
     public static void main(String[] args) throws Exception {
         var env = System.getenv();
         FileServer service = new FileServer(env.getOrDefault("SA_FILE_HOST", "127.0.0.1"),
-                Integer.parseInt(env.getOrDefault("SA_FILE_PORT", "4190")), env.getOrDefault("SA_FILE_TOKEN", ""),
+                Integer.parseInt(env.getOrDefault("SA_FILE_PORT", "6063")), env.getOrDefault("SA_FILE_TOKEN", ""),
                 Integer.parseInt(env.getOrDefault("SA_FILE_MAX_BYTES", "20971520")),
                 Integer.parseInt(env.getOrDefault("SA_FILE_MAX_CHARS", "1000000")),
                 Integer.parseInt(env.getOrDefault("SA_FILE_TIMEOUT_SECONDS", "25")),

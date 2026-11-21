@@ -15,7 +15,7 @@ gradle test installDist
 SA_FILE_TOKEN=your-test-token build/install/sa_file/bin/sa_file
 ```
 
-By default, it only listens on `127.0.0.1:4190`. The service supports `GET /health` and POST /parse. Authentication uses either a Bearer token; if no token is configured, listening is restricted to loopback addresses only and should not be exposed directly. The token in the command is for demonstration purposes—replace it with your own secret when deploying.
+By default, it only listens on `127.0.0.1:6063`. The service supports `GET /health` and POST /parse. Authentication uses either a Bearer token; if no token is configured, listening is restricted to loopback addresses only and should not be exposed directly. The token in the command is for demonstration purposes—replace it with your own secret when deploying.
 
 ### HTTP Protocol
 
@@ -39,7 +39,7 @@ Environment Variables:
 
 | Variable | Default Value |
 | --- | --- |
-| SA_FILE_HOST / SA_FILE_PORT | 127.0.0.1 / 4190 |
+| SA_FILE_HOST / SA_FILE_PORT | 127.0.0.1 / 6063 |
 | SA_FILE_TOKEN | Empty; must be configured for non-loopback listening |
 | SA_FILE_MAX_BYTES | 20971520; supported range: 1–268435456 bytes (256 MiB) |
 | SA_FILE_MAX_CHARS | 1000000 |
@@ -58,7 +58,7 @@ or local execution, Tesseract (along with required language packs) must be insta
 docker build -t sa2web-file-parser:latest .
 docker run --rm --name sa-file-test --read-only --tmpfs /tmp:size=256m \
   --memory=1g --cpus=2 --pids-limit=128 \
-  -p 4190:3906 -e SA_FILE_TOKEN=your-test-token sa2web-file-parser:latest
+  -p 6063:6063 -e SA_FILE_TOKEN=your-test-token sa2web-file-parser:latest
 ```
 
 The root `Dockerfile` supports Linux amd64 and arm64. The `application` stage
@@ -79,9 +79,9 @@ native builds automatically use the host architecture.
 
 ## Integration Testing with sa2web
 
-1. Start the service and verify with `curl http://127.0.0.1:4190/health`.
+1. Start the service and verify with `curl http://127.0.0.1:6063/health`.
 
-2. Go to the sa2web Admin Console -> DLP -> File Parsing Service: set the URL to `http://127.0.0.1:4190/parse`, select BEARER authentication, and enter the token. Set the OCR timeout to 30,000 ms and select "Block on Failure".
+2. Go to the sa2web Admin Console -> DLP -> File Parsing Service: set the URL to `http://127.0.0.1:6063/parse`, select BEARER authentication, and enter the token. Set the OCR timeout to 30,000 ms and select "Block on Failure".
 
 3. Associate the policy with a test user group, add file upload/download actions, and bind this parsing service.
 
@@ -95,7 +95,7 @@ API Testing:
 ```sh
 curl -H 'Authorization: Bearer your-test-token' \
   -F 'file=@build/fixtures/sensitive.docx' \
-  -F 'filename=sensitive.docx' http://127.0.0.1:4190/parse
+  -F 'filename=sensitive.docx' http://127.0.0.1:6063/parse
 ```
 
 ## License and third-party software
